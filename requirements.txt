@@ -1,0 +1,5 @@
+gevent==1.0
+gevent-websocket==0.9.1
+greenlet==0.4.2
+ws4py==0.3.2
+wsgiref==0.1.2

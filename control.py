@@ -39,9 +39,9 @@ def json_to_player_list(jsonstr):
     d = json.loads(jsonstr)
     players = []
     for p in d:
-        players.append(Player(p['start_pixel'],
-                              p['end_pixel'],
-                              p['active'],
+        players.append(Player(int(p['start_pixel']),
+                              int(p['end_pixel']),
+                              bool(p['active']),
                               p.get('to_act', False)))
     return players
 

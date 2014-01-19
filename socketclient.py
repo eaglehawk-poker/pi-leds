@@ -1,5 +1,6 @@
 import sys
-from socketIO_client import SocketIO
+from socketIO_client import SocketIO, BaseNamespace
+import json
 
 import gevent
 from gevent import monkey
@@ -8,44 +9,69 @@ monkey.patch_socket()
 import control
 
 RUNNING_LED_MODIFIER = None
-#spidev = file("/dev/spidev0.0", "wb")
+spidev = file("/dev/spidev0.0", "wb")
 
 
-def handle(msg):
-    with open('led_config.json', 'w') as f:
-        f.write(msg)
-
-    print 'handle msg: ', msg
-    #player_list = control.json_to_player_list(msg)
-    #control.game_mode(spidev, player_list, on=True)
-
-
-def on_player_update(*args):
-    print 'player_update'
-
-
-def on_current_hand_update(*args):
-    print 'on_current_hand_update'
-    print 'args: ', args
-
-def on_leds(*args):
+def start_led_function(*args):
+    # Terminate any running
     global RUNNING_LED_MODIFIER
     if RUNNING_LED_MODIFIER:
         RUNNING_LED_MODIFIER.kill()
-    RUNNING_LED_MODIFIER = gevent.spawn(handle, args[0])
+    RUNNING_LED_MODIFIER = gevent.spawn(args[0], spidev,
+                                        gevent.sleep, *args[1:])
+
+
+class LEDStripeSocket(BaseNamespace):
+
+    def on_connect(self):
+        print '[Connected]'
+
+    def on_update_led_configuration(self, *args):
+        print 'on update led configuration'
+        data = args[0]
+        with open('led_config.json', 'w') as f:
+            f.write(data)
+        start_led_function(control.game_mode,
+                           control.json_to_player_list(data))
+        print 'on_update_led_configuration'
+        print 'args: ', args
+
+    def on_request_led_configuration(self, *args):
+        print 'requesting led configuration'
+        with open('led_config.json') as f:
+            self.emit('led_configuration_from_device', f.read())
+
+    def on_ledgame(self, *args):
+        #TODO: unjoin previously joined game
+        self.emit('join_game', args[0])
+
+    def on_round_completed(self, *args):
+        start_led_function(control.vegas_baby)
+
+    def on_current_hand_update(self, *args):
+        data = args[0]
+        print 'on_current_hand_update:, ', data
+        active_seats = sorted(data['active_seats'])
+        active_seat = data.get('active_seat', -1)
+        with open('led_config.json') as f:
+            # Not mutable so make new array
+            player_list = control.json_to_player_list(f.read())
+            player_list_updated = []
+
+            for idx, p in enumerate(player_list):
+                active = ((idx + 1) in active_seats)
+                to_act = ((idx + 1) == active_seat)
+                player_list_updated.append(control.Player(p.start_pixel,
+                                                          p.end_pixel,
+                                                          active,
+                                                          to_act))
+            print player_list
+            start_led_function(control.game_mode, player_list_updated)
 
 
 def listener(host, port):
-    with SocketIO(host, port) as socketIO:
-        print 'connected, emitting join_game'
-        #socketIO.emit('join_game', {'game_id': '5257aa9575035d1f14000005'})
-        socketIO.on('led_update', on_led_update)
-        socketIO.on('player_update', on_player_update)
-        socketIO.on('current_hand_update', on_current_hand_update)
-        print 'waiting'
-        #socketIO.on('request_led_conf', send_led_conf)
-        socketIO.wait()
-    print 'Done'
+    socketIO = SocketIO(host, port, LEDStripeSocket)
+    socketIO.wait()
 
 
 if __name__ == '__main__':

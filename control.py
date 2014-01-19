@@ -63,7 +63,7 @@ def color_test(spidev):
         time.sleep(3)
 
 
-def vegas_baby(spidev):
+def vegas_baby(spidev, sleeper):
     pixels = range(LED_COUNT)
     for i in range(LED_COUNT):
         if i % 3 == 0:
@@ -76,29 +76,36 @@ def vegas_baby(spidev):
         send_pixels(spidev, pixels)
         popper = pixels.pop()
         pixels.insert(0, popper)
-        time.sleep(0.1)
+        sleeper(.1)
 
 
-def game_mode(spidev, players, on):
+def game_mode(spidev, sleeper, players):
     pixels = [Pixel(0.0, 0.0, 0.0) for _ in range(LED_COUNT)]
     player_colors = [
         Pixel(0.8, 0.8, 0.4),
         Pixel(0.8, 0.0, 0.8),
         Pixel(0.8, 4.0, 0.8),
         Pixel(0.1, 1.0, 0.0),
-        Pixel(0.4, 8.0, 8.0)
+        Pixel(0.4, 0.8, 0.8),
+        Pixel(0.4, 0.0, 0.8),
+        Pixel(1.0, 0.3, 0.9),
+        Pixel(0.2, 0.8, 0.9)
     ]
 
-    for color_idx, player in enumerate(players):
-        if player.active:
-            color = player_colors[color_idx]
-            if player.to_act and not on:
-                color = Pixel(0.0, 0.0, 0.0)
+    on = True
+    while True:
+        for color_idx, player in enumerate(players):
+            if player.active:
+                color = player_colors[color_idx]
+                if player.to_act and not on:
+                    color = Pixel(0.0, 0.0, 0.0)
 
-            for pixel_idx in range(player.start_pixel, player.end_pixel):
-                pixels[pixel_idx] = color
+                for pixel_idx in range(player.start_pixel, player.end_pixel):
+                    pixels[pixel_idx] = color
+        send_pixels(spidev, pixels)
+        on = not on
+        sleeper(0.3)
 
-    send_pixels(spidev, pixels)
 
 
 def test_game_mode(spidev):
@@ -120,11 +127,11 @@ def filter_pixel(input_pixel, intensity):
 if __name__ == '__main__':
     spidev = file("/dev/spidev0.0", "wb")
     #test_game_mode()
-    #vegas_baby()
-    with open(sys.argv[1]) as f:
-        players = json_to_player_list(f.read())
-        on = True
-        while True:
-            game_mode(spidev, players, on)
-            on = not on
-            time.sleep(0.5)
+    vegas_baby(spidev, time.sleep)
+    #with open(sys.argv[1]) as f:
+    #    players = json_to_player_list(f.read())
+    #    on = True
+    #    while True:
+    #        game_mode(spidev, players, on)
+    #        on = not on
+    #        time.sleep(0.5)

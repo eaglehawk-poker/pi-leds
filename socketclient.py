@@ -8,7 +8,7 @@ monkey.patch_socket()
 
 import control
 
-TIME_INTERVAL = 0.5
+TIME_INTERVAL = 0.1
 RUNNING_LED_MODIFIER = None
 spidev = file("/dev/spidev0.0", "wb")
 
@@ -48,7 +48,7 @@ class LEDStripeSocket(BaseNamespace):
         self.emit('join_game', args[0])
 
     def on_round_completed(self, *args):
-        start_led_function(control.vegas_baby)
+        start_led_function(control.idle_mode)
 
     def on_current_hand_update(self, *args):
         data = args[0]

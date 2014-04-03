@@ -1,11 +1,18 @@
 import time
+import random
 from collections import namedtuple
 from functools import partial
 import json
-from sys import stdout
+import sys
+try:
+    import termcolor
+    has_term_colors = True
+except:
+    has_term_colors = False
 
 Pixel = namedtuple('Pixel', ['r', 'g', 'b'])
-Player = namedtuple('Player', ['start_pixel', 'end_pixel', 'active', 'to_act'])
+Player = namedtuple('Player', ['start_pixel', 'end_pixel',
+                               'active', 'to_act', 'color'])
 
 TOTAL_LED_COUNT = 50
 ACTIVE_LEDS = 50
@@ -38,72 +45,113 @@ def pixels_to_spi(device, pixels):
 
 
 def pixels_to_console(pixels):
-    output = '|'
+    outputter = '|'
     ascii_colors = [' ', ';', 'l', '}', 'j', 'O', 'q', '$']
 
     for pixel in pixels:
         intensity = 0.3 * pixel.r + 0.6 * pixel.g + 0.11 * pixel.b
         ascii_idx = int(round(intensity * (len(ascii_colors) - 1)))
-        output += ascii_colors[ascii_idx]
-    output += '|'
+        color = 'grey'
+        if has_term_colors:
+            if pixel.r > max(pixel.g, pixel.b):
+                color = 'red'
+            if pixel.g > max(pixel.r, pixel.b):
+                color = 'green'
+            if pixel.b > max(pixel.r, pixel.g):
+                color = 'blue'
+            outputter += termcolor.colored(ascii_colors[ascii_idx], color)
+        else:
+            outputter += ascii_colors[ascii_idx]
+    outputter += '|'
 
-    stdout.write("\r")
-    stdout.write(output)
-    stdout.flush()
+    sys.stdout.write("\r")
+    sys.stdout.write(outputter)
+    sys.stdout.flush()
 
 
 def json_to_player_list(jsonstr):
     d = json.loads(jsonstr)
     players = []
     for p in d:
+        hex_color = p.get('color', '#FFFFFF')
+        r = int(hex_color[1:3], 16) / 255.0
+        g = int(hex_color[3:5], 16) / 255.0
+        b = int(hex_color[5:7], 16) / 255.0
         players.append(Player(int(p['start_pixel']),
                               int(p['end_pixel']),
                               bool(p['active']),
-                              p.get('to_act', False)))
+                              p.get('to_act', False),
+                              Pixel(r, g, b)))
     return players
 
 
-def game_mode(output, sleeper, players):
+def game_mode(outputter, sleeper, players):
     pixels = [Pixel(0.0, 0.0, 0.0) for _ in range(ACTIVE_LEDS)]
-    player_colors = [
-        Pixel(0.8, 0.8, 0.4),
-        Pixel(0.8, 0.0, 0.8),
-        Pixel(0.8, 0.4, 0.8),
-        Pixel(0.1, 1.0, 0.0),
-        Pixel(0.4, 0.8, 0.8),
-        Pixel(0.4, 0.0, 0.8),
-        Pixel(1.0, 0.3, 0.9),
-        Pixel(0.2, 0.8, 0.9)
-    ]
-
     i = 0
     while True:
         for color_idx, player in enumerate(players):
-            if player.active:
-                if player.to_act:
-                    length = player.end_pixel - player.start_pixel
-                    steps = length / 2 + (length % 2)
-                    for pixel_idx in range(player.start_pixel,
-                                           player.end_pixel):
-                        if pixel_idx == player.start_pixel + i or\
-                           pixel_idx == player.end_pixel - i - 1:
-                            color = player_colors[color_idx]
-                        else:
-                            color = Pixel(0.0, 0.0, 0.0)
-                        pixels[pixel_idx] = color
+            if not player.active:
+                continue
+            if player.to_act:
+                length = player.end_pixel - player.start_pixel
+                steps = length / 2 + (length % 2)
+                for pixel_idx in range(player.start_pixel,
+                                       player.end_pixel):
+                    if pixel_idx == player.start_pixel + i or\
+                       pixel_idx == player.end_pixel - i - 1:
+                        color = player.color
+                    elif pixel_idx == player.start_pixel + i - 1 or\
+                            pixel_idx == player.end_pixel - i:
+                        color = filter_pixel(player.color, 0.3)
+                    elif pixel_idx == player.start_pixel + i - 2 or\
+                            pixel_idx == player.end_pixel - i + 1:
+                        color = filter_pixel(player.color, 0.1)
+                    else:
+                        color = Pixel(0.0, 0.0, 0.0)
+                    pixels[pixel_idx] = color
 
-                    i += 1
-                    i = i % steps
-                else:
-                    color = player_colors[color_idx]
-                    for pixel_idx in range(player.start_pixel,
-                                           player.end_pixel):
-                        pixels[pixel_idx] = color
-        output(pixels)
+                i += 1
+                i = i % steps
+            else:
+                color = player.color
+                for pixel_idx in range(player.start_pixel,
+                                       player.end_pixel):
+                    pixels[pixel_idx] = color
+        outputter(pixels)
         sleeper(2)
 
 
-def carousel(output, sleeper):
+def winner_mode(outputter, sleeper, winner_pos):
+    pixels = [Pixel(0.0, 0.0, 0.0) for _ in range(ACTIVE_LEDS)]
+    colors = [
+        Pixel(0.4, 0.4, 1.0),
+        Pixel(1.0, 0.4, 0.4),
+        Pixel(0.0, 0.0, 0.0),
+    ]
+    i = 0
+
+    while True:
+        for i in range(ACTIVE_LEDS / 2):
+            for x in range(winner_pos - i, winner_pos + i):
+                if x < 0:
+                    x += ACTIVE_LEDS
+                x = x % ACTIVE_LEDS
+                pixels[x] = colors[0]
+            outputter(pixels)
+            sleeper(0.1)
+
+        for i in range(ACTIVE_LEDS / 2, 0, -1):
+            pixels = [Pixel(0.0, 0.0, 0.0) for _ in range(ACTIVE_LEDS)]
+            for x in range(winner_pos - i, winner_pos + i):
+                if x < 0:
+                    x += ACTIVE_LEDS
+                x = x % ACTIVE_LEDS
+                pixels[x] = colors[0]
+            outputter(pixels)
+            sleeper(0.1)
+
+
+def carousel(outputter, sleeper):
     pixels = [Pixel(0.0, 0.0, 0.0) for _ in range(ACTIVE_LEDS)]
     colors = [
         Pixel(1.0, 0.2, 0.8),
@@ -117,18 +165,19 @@ def carousel(output, sleeper):
         for a in range(6):
             for b in range(0, ACTIVE_LEDS, 5):
                 pixels[b:b + a] = [color for _ in range(a)]
-            output(pixels)
+            outputter(pixels)
             sleeper(1)
         pixels = [Pixel(0.0, 0.0, 0.0) for _ in range(ACTIVE_LEDS)]
         for a in range(1, 5):
             for b in range(0, ACTIVE_LEDS, 5):
-                pixels[b + a:b + 6] = [color for _ in range(5 - a)]
-            output(pixels)
+                pixels[b + a:b + 6] = [color] * len(pixels[b + a:b + 6])
+
+            outputter(pixels)
             pixels = [Pixel(0.0, 0.0, 0.0) for _ in range(ACTIVE_LEDS)]
             sleeper(1)
 
 
-def vegas_baby(output, sleeper):
+def vegas_baby(outputter, sleeper):
     pixels = range(ACTIVE_LEDS)
     for i in range(ACTIVE_LEDS):
         if i % 3 == 0:
@@ -138,13 +187,13 @@ def vegas_baby(output, sleeper):
         else:
             pixels[i] = Pixel(0.0, 0.2, 0.8)
     for i in range(ACTIVE_LEDS):
-        output(pixels)
+        outputter(pixels)
         popper = pixels.pop()
         pixels.insert(0, popper)
         sleeper(1)
 
 
-def fill_and_drain(output, sleeper):
+def fill_and_drain(outputter, sleeper):
     pixels = [Pixel(0.0, 0.0, 0.0) for _ in range(ACTIVE_LEDS)]
     colors = [
         Pixel(1.0, 0.4, 0.4),
@@ -166,7 +215,7 @@ def fill_and_drain(output, sleeper):
                     pixels[i] = Pixel(0.0, 0.0, 0.0)
                 for i in range(fill_idx, ACTIVE_LEDS):
                     pixels[i] = colors[color_idx]
-            output(pixels)
+            outputter(pixels)
             if fill_idx == ACTIVE_LEDS - 1:
                 if not fill:
                     color_idx = (color_idx + 1) % len(colors)
@@ -177,49 +226,55 @@ def fill_and_drain(output, sleeper):
             sleeper(0.1)
 
 
-def idle_mode(output, sleep):
-    while True:
-        carousel(output, sleep)
-        fill_and_drain(output, sleep)
-        vegas_baby(output, sleep)
-
-
-def test_game_mode(output, sleeper):
-    players = [
-        Player(3, 8, True, False),
-        Player(9, 17, True, True),
-        Player(18, 23, True, False),
-        Player(26, 32, True, False)
-    ]
-    game_mode(output, sleeper, players)
-
-
-def color_test(output, sleeper):
-    while True:
-        pixels = [Pixel(1.0, 0.0, 0.0) for _ in range(ACTIVE_LEDS)]
-        print 'red'
-        output(pixels)
-        raw_input()
-        pixels = [Pixel(0.0, 1.0, 0.0) for _ in range(ACTIVE_LEDS)]
-        print 'green'
-        output(pixels)
-        raw_input()
-        pixels = [Pixel(0.0, 0.0, 1.0) for _ in range(ACTIVE_LEDS)]
-        print 'blue'
-        output(pixels)
-        raw_input()
-
-
-def count_down_test(output, sleeper):
+def random_on_off(outputter, sleeper):
     pixels = [Pixel(0.0, 0.0, 0.0) for _ in range(ACTIVE_LEDS)]
-    output(pixels)
-    pixels[0] = Pixel(1.0, 0.0, 0.0)
-    pixels[49] = Pixel(1.0, 0.0, 0.0)
-    output(pixels)
-    for i in range(ACTIVE_LEDS):
-        raw_input()
-        pixels[0:i + 1] = [Pixel(0.0, 1.0, 0.0) for _ in range(i + 1)]
-        output(pixels)
+    colors = [
+        Pixel(1.0, 0.4, 0.4),
+        Pixel(0.4, 1.0, 0.4),
+        Pixel(0.4, 0.4, 1.0),
+    ]
+
+    random.seed(time)
+    PIXEL_COUNT = 40
+    for _ in range(5):
+        for i in range(PIXEL_COUNT):
+            idx = random.randint(0, ACTIVE_LEDS - 1)
+            while pixels[idx].r != 0.0:
+                idx = (idx + 1) % ACTIVE_LEDS
+            color_idx = random.randint(0, 2)
+            pixels[idx] = colors[color_idx]
+            outputter(pixels)
+            sleeper(0.2)
+
+        for i in range(PIXEL_COUNT):
+            idx = random.randint(0, ACTIVE_LEDS - 1)
+            while pixels[idx].r == 0.0:
+                idx = (idx + 1) % ACTIVE_LEDS
+            pixels[idx] = Pixel(0.0, 0.0, 0.0)
+            outputter(pixels)
+            sleeper(0.2)
+
+
+def idle_mode(outputter, sleep):
+    while True:
+        carousel(outputter, sleep)
+        fill_and_drain(outputter, sleep)
+        vegas_baby(outputter, sleep)
+        random_on_off(outputter, sleep)
+
+
+def test_winner_mode(outputter, sleeper):
+    winner_mode(outputter, sleeper, 10)
+
+
+def test_game_mode(outputter, sleeper):
+    players = [
+        Player(3, 8, True, False, Pixel(1.0, 0.3, 0.3)),
+        Player(9, 17, True, True, Pixel(1.0, 0.3, 0.3)),
+        Player(18, 23, True, False, Pixel(1.0, 0.3, 0.3)),
+        Player(26, 32, True, False, Pixel(1.0, 0.3, 0.3))
+    ]
+    game_mode(outputter, sleeper, players)
 
 
 def filter_pixel(input_pixel, intensity):
@@ -228,14 +283,38 @@ def filter_pixel(input_pixel, intensity):
                          intensity * input_pixel.b)
     return output_pixel
 
+
+funcs = [
+    idle_mode,
+    random_on_off,
+    fill_and_drain,
+    carousel,
+    test_game_mode,
+    test_winner_mode
+]
+
+
+def print_usage_and_exit():
+    print 'Usage: %s <program> [--console]' % sys.argv[0]
+    print 'available programs:'
+    print " - " + "\n - ".join(f.func_name for f in funcs)
+    exit(1)
+
 if __name__ == '__main__':
-    spidev = file("/dev/spidev0.0", "wb")
-    spi = partial(pixels_to_spi, spidev)
+    if len(sys.argv) < 2:
+        print_usage_and_exit()
+
+    func = filter(lambda f: f.func_name == sys.argv[1], funcs)
+    if len(func) != 1:
+        print_usage_and_exit()
+
+    outputter = pixels_to_console
+    use_console = len(sys.argv) == 3 and sys.argv[2] == '--console'
+    if not use_console:
+        spidev = file("/dev/spidev0.0", "wb")
+        outputter = partial(pixels_to_spi, spidev)
+
     TIME_INTERVAL = .1
     sleeper = lambda x: time.sleep(x * TIME_INTERVAL)
-    #fill_and_drain(pixels_to_console, sleeper)
-    #vegas_baby(pixels_to_console, sleeper)
-    #test_game_mode(spi, sleeper)
-    #color_test(spi, sleeper)
-    idle_mode(spi, sleeper)
-    #count_down_test(spi, sleeper)
+
+    func[0](outputter, sleeper)

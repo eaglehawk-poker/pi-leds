@@ -2,4 +2,5 @@ gevent==1.0
 greenlet==0.4.2
 six==1.5.2
 socketIO-client==0.5.3
+termcolor==1.1.0
 wsgiref==0.1.2

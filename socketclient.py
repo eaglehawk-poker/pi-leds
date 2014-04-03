@@ -13,14 +13,17 @@ RUNNING_LED_MODIFIER = None
 spidev = file("/dev/spidev0.0", "wb")
 
 pixel_output = partial(control.pixels_to_spi, spidev)
+#pixel_output = control.pixels_to_console
+
 
 def start_led_function(*args):
     # Terminate any running
     global RUNNING_LED_MODIFIER
     if RUNNING_LED_MODIFIER:
         RUNNING_LED_MODIFIER.kill()
+    sleeper = lambda x: gevent.sleep(x * TIME_INTERVAL)
     RUNNING_LED_MODIFIER = gevent.spawn(args[0], pixel_output,
-                                        lambda x: gevent.sleep(x*TIME_INTERVAL),
+                                        sleeper,
                                         *args[1:])
 
 
@@ -66,7 +69,8 @@ class LEDStripeSocket(BaseNamespace):
                 player_list_updated.append(control.Player(p.start_pixel,
                                                           p.end_pixel,
                                                           active,
-                                                          to_act))
+                                                          to_act,
+                                                          p.color))
             start_led_function(control.game_mode, player_list_updated)
 
 

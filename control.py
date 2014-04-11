@@ -1,5 +1,6 @@
 import time
 import random
+import math
 from collections import namedtuple
 from functools import partial
 import json
@@ -177,6 +178,31 @@ def carousel(outputter, sleeper):
             sleeper(1)
 
 
+def waves(outputter, sleeper):
+    def f(x):
+        strength = 0.2 + (0.8*((math.sin(math.pi * (x / 50.0)))**2))
+        return 0.4*strength, 0.4*strength, 1.0*strength
+    wave = lambda x: 0.2 + (0.8*(math.sin(math.pi * (x / 50.0))))
+    rs = [wave(x) for x in range(ACTIVE_LEDS)]
+    #gs = [wave(x) for x in range(ACTIVE_LEDS)]
+    #bs = [wave(x) for x in range(ACTIVE_LEDS)]
+    #for i in range(20):
+    #    tmp = gs.pop()
+    #    gs.insert(0, tmp)
+    #for i in range(40):
+    #    tmp = bs.pop()
+    #    bs.insert(0, tmp)
+
+    #pixels = [Pixel(r, g, b) for r, g, b in zip(rs, gs, bs)]
+    #pixels = [Pixel(wave(x), 0.0, 0.0) for x in range(ACTIVE_LEDS)]
+    pixels = [Pixel(*f(x)) for x in range(ACTIVE_LEDS)]
+    for i in range(1000):
+        outputter(pixels)
+        tmp = pixels.pop()
+        pixels.insert(0, tmp)
+        sleeper(0.4)
+
+
 def vegas_baby(outputter, sleeper):
     pixels = range(ACTIVE_LEDS)
     for i in range(ACTIVE_LEDS):
@@ -257,6 +283,7 @@ def random_on_off(outputter, sleeper):
 
 def idle_mode(outputter, sleep):
     while True:
+        waves(outputter, sleep)
         carousel(outputter, sleep)
         fill_and_drain(outputter, sleep)
         vegas_baby(outputter, sleep)
@@ -290,7 +317,8 @@ funcs = [
     fill_and_drain,
     carousel,
     test_game_mode,
-    test_winner_mode
+    test_winner_mode,
+    waves
 ]
 
 

@@ -303,10 +303,10 @@ def test_winner_mode(outputter, sleeper):
 
 def test_game_mode(outputter, sleeper):
     players = [
-        Player(3, 8, True, False, Pixel(1.0, 0.3, 0.3)),
-        Player(9, 17, True, True, Pixel(1.0, 0.3, 0.3)),
-        Player(18, 23, True, False, Pixel(1.0, 0.3, 0.3)),
-        Player(26, 32, True, False, Pixel(1.0, 0.3, 0.3))
+        Player(3, 8, True, False),
+        Player(9, 17, True, True),
+        Player(18, 23, True, False),
+        Player(26, 32, True, False)
     ]
     game_mode(outputter, sleeper, players)
 

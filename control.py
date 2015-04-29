@@ -203,7 +203,7 @@ def waves(outputter, sleeper):
     #pixels = [Pixel(r, g, b) for r, g, b in zip(rs, gs, bs)]
     #pixels = [Pixel(wave(x), 0.0, 0.0) for x in range(ACTIVE_LEDS)]
     pixels = [Pixel(*f(x)) for x in range(ACTIVE_LEDS)]
-    for i in range(1000):
+    for i in range(100):
         outputter(pixels)
         tmp = pixels.pop()
         pixels.insert(0, tmp)
@@ -290,7 +290,7 @@ def random_on_off(outputter, sleeper):
 
 def idle_mode(outputter, sleep):
     while True:
-        waves(outputter, sleep)
+        #waves(outputter, sleep)
         carousel(outputter, sleep)
         fill_and_drain(outputter, sleep)
         vegas_baby(outputter, sleep)

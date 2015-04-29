@@ -35,7 +35,7 @@ class LEDStripeSocket(BaseNamespace):
         print '[Connected]'
 
     def on_update_led_configuration(self, *args):
-        #print 'on update led configuration'
+        print 'updating led configuration'
         data = args[0]
         with open('led_config.json', 'w') as f:
             f.write(data)
@@ -43,7 +43,7 @@ class LEDStripeSocket(BaseNamespace):
                            control.json_to_player_list(data))
 
     def on_request_led_configuration(self, *args):
-        #print 'requesting led configuration'
+        print 'led configuration requested'
         with open('led_config.json') as f:
             self.emit('led_configuration_from_device', f.read())
 
@@ -59,6 +59,7 @@ class LEDStripeSocket(BaseNamespace):
     def on_hand_update(self, *args):
         data = args[0]
         print 'on_current_hand_update:'
+        print data
         active_seats = sorted(data['active_seats'])
         active_seat = data.get('active_seat', -1)
         with open('led_config.json') as f:

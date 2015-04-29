@@ -68,8 +68,8 @@ class LEDStripeSocket(BaseNamespace):
             player_list_updated = []
 
             for idx, p in enumerate(player_list):
-                active = ((idx + 1) in active_seats)
-                to_act = ((idx + 1) == active_seat)
+                active = (idx in active_seats)
+                to_act = (idx  == active_seat)
                 player_list_updated.append(control.Player(p.start_pixel,
                                                           p.end_pixel,
                                                           active,

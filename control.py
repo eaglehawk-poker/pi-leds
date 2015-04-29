@@ -13,11 +13,21 @@ except:
 
 Pixel = namedtuple('Pixel', ['r', 'g', 'b'])
 Player = namedtuple('Player', ['start_pixel', 'end_pixel',
-                               'active', 'to_act', 'color'])
+                               'active', 'to_act'])
 
 TOTAL_LED_COUNT = 50
 ACTIVE_LEDS = 50
 GLOBAL_DIM = 1.0  # Adjust to change maximum brightness
+DISTINCT_COLORS = [
+    Pixel(1.0, 0.4, 0.4),
+    Pixel(0.4, 1.0, 0.4),
+    Pixel(0.4, 0.4, 1.0),
+    Pixel(0.4, 1.0, 1.0),
+]
+
+
+def get_distinct_color(index):
+    return DISTINCT_COLORS[index % len(DISTINCT_COLORS)]
 
 
 def pixels_to_spi(device, pixels):
@@ -74,15 +84,11 @@ def json_to_player_list(jsonstr):
     d = json.loads(jsonstr)
     players = []
     for p in d:
-        hex_color = p.get('color', '#FFFFFF')
-        r = int(hex_color[1:3], 16) / 255.0
-        g = int(hex_color[3:5], 16) / 255.0
-        b = int(hex_color[5:7], 16) / 255.0
         players.append(Player(int(p['start_pixel']),
                               int(p['end_pixel']),
                               bool(p['active']),
-                              p.get('to_act', False),
-                              Pixel(r, g, b)))
+                              p.get('to_act', False)))
+                              
     return players
 
 
@@ -90,7 +96,7 @@ def game_mode(outputter, sleeper, players):
     pixels = [Pixel(0.0, 0.0, 0.0) for _ in range(ACTIVE_LEDS)]
     i = 0
     while True:
-        for color_idx, player in enumerate(players):
+        for color_index, player in enumerate(players):
             if not player.active:
                 continue
             if player.to_act:
@@ -98,15 +104,16 @@ def game_mode(outputter, sleeper, players):
                 steps = length / 2 + (length % 2)
                 for pixel_idx in range(player.start_pixel,
                                        player.end_pixel):
+                    color = get_distinct_color(color_index)
                     if pixel_idx == player.start_pixel + i or\
                        pixel_idx == player.end_pixel - i - 1:
-                        color = player.color
+                        color = get_distinct_color(color_index)
                     elif pixel_idx == player.start_pixel + i - 1 or\
                             pixel_idx == player.end_pixel - i:
-                        color = filter_pixel(player.color, 0.3)
+                        color = filter_pixel(color, 0.3)
                     elif pixel_idx == player.start_pixel + i - 2 or\
                             pixel_idx == player.end_pixel - i + 1:
-                        color = filter_pixel(player.color, 0.1)
+                        color = filter_pixel(color, 0.1)
                     else:
                         color = Pixel(0.0, 0.0, 0.0)
                     pixels[pixel_idx] = color
@@ -114,7 +121,7 @@ def game_mode(outputter, sleeper, players):
                 i += 1
                 i = i % steps
             else:
-                color = player.color
+                color = get_distinct_color(color_index)
                 for pixel_idx in range(player.start_pixel,
                                        player.end_pixel):
                     pixels[pixel_idx] = color

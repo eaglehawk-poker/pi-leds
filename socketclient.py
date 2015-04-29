@@ -1,3 +1,4 @@
+import logging
 import sys
 from functools import partial
 from socketIO_client import SocketIO, BaseNamespace
@@ -5,6 +6,7 @@ from socketIO_client import SocketIO, BaseNamespace
 import gevent
 from gevent import monkey
 monkey.patch_socket()
+logging.basicConfig()
 
 import control
 
@@ -33,7 +35,7 @@ class LEDStripeSocket(BaseNamespace):
         print '[Connected]'
 
     def on_update_led_configuration(self, *args):
-        print 'on update led configuration'
+        #print 'on update led configuration'
         data = args[0]
         with open('led_config.json', 'w') as f:
             f.write(data)
@@ -41,19 +43,20 @@ class LEDStripeSocket(BaseNamespace):
                            control.json_to_player_list(data))
 
     def on_request_led_configuration(self, *args):
-        print 'requesting led configuration'
+        #print 'requesting led configuration'
         with open('led_config.json') as f:
             self.emit('led_configuration_from_device', f.read())
 
     def on_ledgame(self, *args):
         #TODO: unjoin previously joined game
         print 'joining'
+        print args[0]['game_id']
         self.emit('join_game', args[0])
 
     def on_round_completed(self, *args):
         start_led_function(control.idle_mode)
 
-    def on_current_hand_update(self, *args):
+    def on_hand_update(self, *args):
         data = args[0]
         print 'on_current_hand_update:'
         active_seats = sorted(data['active_seats'])
@@ -69,8 +72,7 @@ class LEDStripeSocket(BaseNamespace):
                 player_list_updated.append(control.Player(p.start_pixel,
                                                           p.end_pixel,
                                                           active,
-                                                          to_act,
-                                                          p.color))
+                                                          to_act))
             start_led_function(control.game_mode, player_list_updated)
 
 
@@ -81,7 +83,7 @@ def listener(host, port):
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:
-        print "Usage: %s port host" % sys.argv[0]
+        print "Usage: %s host port" % sys.argv[0]
         exit(1)
     greenlets = [
         gevent.spawn(listener, sys.argv[1], int(sys.argv[2]))

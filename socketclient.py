@@ -34,6 +34,12 @@ class LEDStripeSocket(BaseNamespace):
     def on_connect(self):
         print '[Connected]'
 
+    def on_custom_led_program(self, *args):
+        program_index = int(args[0])
+        print program_index
+        if 0 <= program_index < len(control.custom_programs):
+            start_led_function(control.custom_programs[program_index])
+
     def on_update_led_configuration(self, *args):
         print 'updating led configuration'
         data = args[0]

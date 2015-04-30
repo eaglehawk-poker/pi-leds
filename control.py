@@ -297,6 +297,26 @@ def idle_mode(outputter, sleep):
         random_on_off(outputter, sleep)
 
 
+def running_ant(outputter, sleeper):
+    pixels = [Pixel(0.0, 0.0, 0.0) for _ in range(ACTIVE_LEDS)]
+    colors = [
+        Pixel(1.0, 0.2, 0.0),
+        Pixel(0.2, 0.1, 0.0),
+        Pixel(0.2, 1.0, 0.0),
+    ]
+
+    while True:
+        for color_index in range(6):
+            for i in range(ACTIVE_LEDS):
+                for j in range(ACTIVE_LEDS):
+                    if j == i:
+                        pixels[j] = colors[color_index % len(colors)]
+                    else:
+                        pixels[j] = Pixel(0.0, 0.0, 0.0)
+                outputter(pixels)
+                sleeper(0.1)
+
+
 def test_winner_mode(outputter, sleeper):
     winner_mode(outputter, sleeper, 10)
 
@@ -325,7 +345,12 @@ funcs = [
     carousel,
     test_game_mode,
     test_winner_mode,
-    waves
+    waves,
+    running_ant
+]
+
+custom_programs = [
+    running_ant
 ]
 
 

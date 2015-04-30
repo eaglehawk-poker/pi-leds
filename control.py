@@ -319,16 +319,48 @@ def running_ant(outputter, sleeper):
 def love_pulse(outputter, sleeper):
     pixels = [Pixel(0.0, 0.0, 0.0) for _ in range(ACTIVE_LEDS)]
     red = Pixel(1.0, 0.0, 0.0)
+    blue = Pixel(0.0, 0.0, 1.0)
     while True:
         for i in range(20):
-            color = filter_pixel(red, 0.5 + 0.5*math.sin((i / 20) * math.pi))
+            filter_constant = 0.2 + 0.8*math.sin((i / 19.0) * math.pi)
+            red_color = filter_pixel(red, filter_constant)
+            blue_color = filter_pixel(blue, 1 - filter_constant)
             for j in range(ACTIVE_LEDS):
-                pixels[j] = color
+
+                if j % 2 == 0:
+		    pixels[j] = red_color
+                else:
+		    pixels[j] = blue_color
             outputter(pixels)
             sleeper(0.4)
 
-def strobe(outputter, sleeper):
-    pass
+def full_blown_hell(outputter, sleeper):
+    all_red = [Pixel(1.0, 0.0, 0.0) for _ in range(ACTIVE_LEDS)]
+    all_green = [Pixel(0.0, 1.0, 0.0) for _ in range(ACTIVE_LEDS)]
+    all_blue = [Pixel(0.0, 0.0, 1.0) for _ in range(ACTIVE_LEDS)]
+    while True:
+        outputter(all_red)
+        sleeper(0.4)
+        outputter(all_blue)
+        sleeper(0.4)
+        outputter(all_green)
+        sleeper(0.4)
+
+def sirens(outputter, sleeper):
+    original_pixels = [None for _ in range(ACTIVE_LEDS)]
+    pixels = [Pixel(0.0, 0.0, 0.0) for _ in range(ACTIVE_LEDS)]
+    for i in range(ACTIVE_LEDS/2):
+        original_pixels[i] = Pixel(1.0, 0.0, 0.0)
+    for i in range(ACTIVE_LEDS/2, ACTIVE_LEDS):
+        original_pixels[i] = Pixel(0.0, 0.0, 1.0)
+
+    while True:
+        for j in range(ACTIVE_LEDS):
+            for i in range(ACTIVE_LEDS):
+                pixels[(i + j) % ACTIVE_LEDS] = original_pixels[i]
+            outputter(pixels)
+            sleeper(0.05)
+
 
 
 def test_winner_mode(outputter, sleeper):
@@ -361,13 +393,15 @@ funcs = [
     test_winner_mode,
     waves,
     running_ant,
-    love_pulse
+    love_pulse,
+    full_blown_hell,
+    sirens
 ]
 
 custom_programs = [
     running_ant,
     love_pulse,
-    strobe
+    full_blown_hell
 ]
 
 

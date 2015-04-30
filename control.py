@@ -316,6 +316,20 @@ def running_ant(outputter, sleeper):
                 outputter(pixels)
                 sleeper(0.1)
 
+def love_pulse(outputter, sleeper):
+    pixels = [Pixel(0.0, 0.0, 0.0) for _ in range(ACTIVE_LEDS)]
+    red = Pixel(1.0, 0.0, 0.0)
+    while True:
+        for i in range(20):
+            color = filter_pixel(red, 0.5 + 0.5*math.sin((i / 20) * math.pi))
+            for j in range(ACTIVE_LEDS):
+                pixels[j] = color
+            outputter(pixels)
+            sleeper(0.4)
+
+def strobe(outputter, sleeper):
+    pass
+
 
 def test_winner_mode(outputter, sleeper):
     winner_mode(outputter, sleeper, 10)
@@ -346,11 +360,14 @@ funcs = [
     test_game_mode,
     test_winner_mode,
     waves,
-    running_ant
+    running_ant,
+    love_pulse
 ]
 
 custom_programs = [
-    running_ant
+    running_ant,
+    love_pulse,
+    strobe
 ]
 
 

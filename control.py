@@ -401,7 +401,8 @@ funcs = [
 custom_programs = [
     running_ant,
     love_pulse,
-    full_blown_hell
+    full_blown_hell,
+    sirens
 ]
 
 

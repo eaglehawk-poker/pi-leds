@@ -19,10 +19,11 @@ TOTAL_LED_COUNT = 50
 ACTIVE_LEDS = 50
 GLOBAL_DIM = 1.0  # Adjust to change maximum brightness
 DISTINCT_COLORS = [
-    Pixel(1.0, 0.4, 0.4),
-    Pixel(0.4, 1.0, 0.4),
-    Pixel(0.4, 0.4, 1.0),
-    Pixel(0.4, 1.0, 1.0),
+    Pixel(1.0, 0.1, 0.1),
+    Pixel(0.1, 1.0, 0.1),
+    Pixel(0.0, 1.0, 1.0),
+    Pixel(0.8, 0.8, 0.0),
+    Pixel(0.8, 0.0, 0.9),
 ]
 
 
@@ -372,7 +373,8 @@ def test_game_mode(outputter, sleeper):
         Player(3, 8, True, False),
         Player(9, 17, True, True),
         Player(18, 23, True, False),
-        Player(26, 32, True, False)
+        Player(26, 32, True, False),
+        Player(33, 39, True, False)
     ]
     game_mode(outputter, sleeper, players)
 
